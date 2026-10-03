@@ -27,7 +27,7 @@ DEFAULT_CFG = dict(
     exp_id="base-s1", group="baseline", description="Baseline M-base",
     loss="ce",                 # "ce" | "mse"
     optimizer="sgd_momentum",  # "sgd" | "sgd_momentum" | "adam" | "adamw"
-    lr=None,                   # TODO: chọn bằng val, không dùng eval
+    lr=None,                   # điền learning rate đã chọn trên val trước khi chạy
     weight_decay=0.0, momentum=0.9, betas=(0.9, 0.999), eps=1e-8,
     batch=512, epochs=20,
     hidden=(256, 128), dropout=0.0, init="he",
@@ -343,7 +343,7 @@ def write_predictions(row_id, preds, path: str) -> None:
     output = Path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
+        writer = csv.writer(f, lineterminator="\n")
         writer.writerow(("row_id", "pred"))
         writer.writerows(zip(row_ids.astype(np.int64), predictions.astype(np.int64)))
 
