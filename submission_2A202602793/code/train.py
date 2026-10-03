@@ -223,7 +223,7 @@ def run_experiment(cfg: dict, data: dict) -> dict:
 
     history = {
         "epoch": [], "train_loss": [], "val_loss": [], "val_acc": [],
-        "val_macro_f1": [], "grad_norm": [], "epoch_time_s": [],
+        "val_macro_f1": [], "grad_norm": [], "clip_fraction": [], "epoch_time_s": [],
     }
     diverged = False
     if device.type == "cuda":
@@ -235,6 +235,8 @@ def run_experiment(cfg: dict, data: dict) -> dict:
         epoch_start = time.perf_counter()
         model.train()
         epoch_grad_norms = []
+        epoch_batch_count = 0
+        clipped_step_count = 0
         stop_epoch = False
 
         for xb, yb in iterate_batches(X_tr, y_tr, int(cfg["batch"]), generator=generator, shuffle=True):
@@ -262,6 +264,9 @@ def run_experiment(cfg: dict, data: dict) -> dict:
                 stop_epoch = True
                 break
             epoch_grad_norms.append(grad_norm)
+            epoch_batch_count += 1
+            if cfg["clip_norm"] is not None and grad_norm > float(cfg["clip_norm"]):
+                clipped_step_count += 1
             if scaler is None:
                 optimizer.step()
             else:
@@ -283,6 +288,9 @@ def run_experiment(cfg: dict, data: dict) -> dict:
         history["val_acc"].append(val_metrics["acc"])
         history["val_macro_f1"].append(val_metrics["macro_f1"])
         history["grad_norm"].append(float(np.mean(epoch_grad_norms)) if epoch_grad_norms else 0.0)
+        history["clip_fraction"].append(
+            float(clipped_step_count / epoch_batch_count) if epoch_batch_count else 0.0
+        )
         history["epoch_time_s"].append(elapsed)
 
         if math.isfinite(val_metrics["loss"]) and val_metrics["loss"] < best_val_loss:
